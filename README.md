@@ -3,7 +3,7 @@
 1. SpringMVC + SpringIOC + JDBC
 2. javaconfig
 3. Bootstrap
-======功能==============
+### 功能
 1.註冊
 	1.1 帳號透過ajax，判斷帳號是否重覆。如果重覆就不能註冊
 	1.2 密碼透過md5加密
