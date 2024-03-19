@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+
+	xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+		http://www.springframework.org/schema/data/jpa https://www.springframework.org/schema/data/jpa/spring-jpa.xsd">
+
+	<!-- 定義 PropertiesFactoryBean 讀取 UTF-8 編碼的 properties 文件 -->
+	<bean id="appProperties"
+		class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+		<property name="locations">
+			<value>/WEB-INF/resources/enviroment.properties</value>
+		</property>
+		<property name="fileEncoding" value="UTF-8" />
+	</bean>
+
+	<!-- 使用 PropertyPlaceholderConfigurer 引用上面的 PropertiesFactoryBean -->
+	<bean
+		class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="properties" ref="appProperties" />
+	</bean>
+
+	<!-- 錯誤訊息設定 -->
+	<bean id="messageSource"
+		class="org.springframework.context.support.ReloadableResourceBundleMessageSource">
+		<property name="basename"
+			value="/WEB-INF/resources/errorMessage" />
+		<property name="useCodeAsDefaultMessage" value="false" />
+		<property name="defaultEncoding" value="UTF-8" />
+	</bean>
+
+	<!-- 啟用 AspectJ 自動代理 -->
+	<aop:aspectj-autoproxy />
+
+	<!-- 定義 LoggingAspect 切面 <bean id="loggingAspect" class="com.example.aop.LoggingAspect" 
+		/> -->
+
+	<!-- 定義切面和通知 <aop:config> <aop:aspect id="myAspect" ref="loggingAspect"> 
+		<aop:pointcut id="logMethod" expression="execution(* controller.*.*(..))"/> 
+		<aop:before pointcut-ref="logMethod" method="logMethodParams"/> </aop:aspect> 
+		</aop:config> -->
+
+
+	<mvc:annotation-driven />
+
+	<context:component-scan base-package="Login" />
+
+	<!-- 配置 view 渲染器位置 -->
+	<bean id="internalResourceViewResolver"
+		class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/WEB-INF/view/" />
+		<property name="suffix" value=".jsp" />
+	</bean>
+
+	<!-- 錯誤訊息設定 properites <bean id="messageSource" class="org.springframework.context.support.ReloadableResourceBundleMessageSource"> 
+		<property name="basename" value="/WEB-INF/resources/errorMessage" /> <property 
+		name="useCodeAsDefaultMessage" value="false"/> <property name="defaultEncoding" 
+		value="UTF-8"/> </bean> -->
+
+	<!-- JSR 303 Validator 驗證: Hibernate Validator 實作驗證配置 -->
+	<bean id="validator"
+		class="org.springframework.validation.beanvalidation.LocalValidatorFactoryBean">
+		<property name="providerClass"
+			value="org.hibernate.validator.HibernateValidator" />
+		<property name="validationMessageSource" ref="messageSource" />
+	</bean>
+
+	<!-- 解決中文 與 JSR 303 Validator 設定 -->
+	<mvc:annotation-driven validator="validator">
+		<mvc:message-converters
+			register-defaults="true">
+			<bean
+				class="org.springframework.http.converter.StringHttpMessageConverter">
+				<property name="supportedMediaTypes">
+					<list>
+						<value>text/html;charset=UTF-8</value>
+					</list>
+				</property>
+			</bean>
+		</mvc:message-converters>
+	</mvc:annotation-driven>
+
+	<!-- c3p0 pool -->
+	<bean id="dataSource"
+		class="com.mchange.v2.c3p0.ComboPooledDataSource">
+		<property name="driverClass" value="oracle.jdbc.OracleDriver" />
+		<property name="jdbcUrl"
+			value="jdbc:oracle:thin:@localhost:1521:orcl" />
+		<property name="user" value="sys as sysdba" />
+		<property name="password" value="Orcle123" />
+		<property name="maxConnectionAge" value="300" />
+		<property name="maxIdleTimeExcessConnections" value="50" />
+		<property name="debugUnreturnedConnectionStackTraces"
+			value="true" />
+	</bean>
+
+	<!-- HikariCP pool <bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource" 
+		destroy-method="close"> <property name="poolName" value="MyHikariCP" /> <property 
+		name="autoCommit" value="true" /> <property name="driverClassName" value="oracle.jdbc.OracleDriver" 
+		/> <property name="jdbcUrl" value="jdbc:oracle:thin:@localhost:1521:orcl" 
+		/> <property name="username" value="sys as sysdba" /> <property name="password" 
+		value="Orcle123" /> <property name="maximumPoolSize" value="10" /> <property 
+		name="minimumIdle" value="1" /> <property name="connectionTimeout" value="30000" 
+		/> <property name="idleTimeout" value="30000" /> <property name="maxLifetime" 
+		value="30000" /> <property name="connectionTestQuery" value="SELECT 1" /> 
+		</bean> -->
+
+	<!-- jdbc template -->
+	<bean id="jdbcTemplate"
+		class="org.springframework.jdbc.core.JdbcTemplate">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<!-- 測試資料庫連接 -->
+	<bean id="databaseTester" class="Util.Test">
+		<property name="jdbcTemplate" ref="jdbcTemplate" />
+	</bean>
+
+	<!-- named parameter jdbc template -->
+	<bean id="namedParameterJdbcTemplate"
+		class="org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate">
+		<constructor-arg ref="dataSource" />
+	</bean>
+
+	<!-- 配置事務管理器 -->
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource"></property>
+	</bean>
+
+	<!-- 開啟註解驅動，對事務相關的註解進行掃描與解析 -->
+	<tx:annotation-driven
+		transaction-manager="transactionManager"></tx:annotation-driven>
+
+	<!-- 定義攔截器 <bean class="com.example.interceptor.LoginInterceptor" />Bean -->
+
+	<!-- 配置攔截器 <mvc:interceptors> <mvc:interceptor> <mvc:mapping path="/**" 
+		/> <mvc:exclude-mapping path="/auth/login" /> <mvc:exclude-mapping path="/auth/login_boss" 
+		/> <mvc:exclude-mapping path="/hello/*" /> <mvc:exclude-mapping path="/img/**" 
+		/> <bean class="com.example.interceptor.LoginInterceptor" /> </mvc:interceptor> 
+		</mvc:interceptors> -->
+
+	<!-- 配置上傳檔案解析器 -->
+	<bean id="multipartResolver"
+		class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+		<property name="maxUploadSize" value="#{1024 * 1024 * 50}"></property>
+	</bean>
+
+	<!-- 靜態資源對映： http://localhost:8080/ManagementSystem/app/img/sashimi.jpg -->
+	<!-- 靜態資源對映： http://localhost:8080/ManagementSystem/app/img/qrcodes/63c0a02a-692e-41a5-a934-434fd51919ed.png -->
+	<mvc:resources mapping="/img/**"
+		location="file:C:/Users/NTPU/git/ManagementSystem/src/main/webapp/images/" />
+</beans>
